@@ -1,0 +1,300 @@
+package in.co.surya.suryabulb.Activity;
+
+import android.app.Dialog;
+import android.app.ProgressDialog;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.net.wifi.ScanResult;
+import android.net.wifi.WifiConfiguration;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
+import android.os.Bundle;
+import android.os.Handler;
+import android.support.v7.app.AlertDialog;
+import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
+import android.text.TextUtils;
+import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.Window;
+import android.widget.EditText;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import in.co.surya.suryabulb.Adapter.WiFiListAdapter;
+import in.co.surya.suryabulb.R;
+
+import static java.lang.Thread.sleep;
+
+public class WiFiList extends AppCompatActivity implements WiFiListAdapter.OnCardClickListner{
+
+    private String TAG = "WifiList";
+    private WifiManager wifiManager;
+    private RecyclerView rvWifiList;
+    private WiFiListAdapter wiFiListAdapter;
+    List<ScanResult> mScanResults = new ArrayList<>();
+    private NetworkInfo wifi;
+    Thread thread;
+    private ProgressDialog progress;
+    private WifiReceiver wifiReceiver;
+    private TextView textviewFetch;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_wi_fi_list);
+
+        textviewFetch = (TextView) findViewById(R.id.textviewFetch);
+
+        getSupportActionBar().setTitle("Select Connection");
+
+        rvWifiList = (RecyclerView) findViewById(R.id.rvWifiList);
+        rvWifiList.setHasFixedSize(true);
+
+        LinearLayoutManager llm = new LinearLayoutManager(WiFiList.this, LinearLayoutManager.VERTICAL, false);
+        rvWifiList.setLayoutManager(llm);
+
+        wifiManager = (WifiManager)getSystemService(Context.WIFI_SERVICE);
+
+        wifiReceiver = new WifiReceiver();
+        registerReceiver(wifiReceiver, new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION));
+//        registerReceiver(new WifiStateChange(), new IntentFilter(WifiManager.SUPPLICANT_CONNECTION_CHANGE_ACTION));
+
+        wifiManager.disconnect();
+
+        if (!wifiManager.isWifiEnabled()){
+            showAlert();
+        } else {
+            wifiManager.startScan();
+        }
+    }
+
+    private void showAlert(){
+        AlertDialog.Builder builder1 = new AlertDialog.Builder(WiFiList.this);
+        builder1.setMessage("App needs to use Wifi. Click ok to switch it on.");
+        builder1.setCancelable(false);
+
+        builder1.setPositiveButton(
+                "Ok",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int id) {
+                        dialog.cancel();
+                        wifiManager.setWifiEnabled(true);
+                        wifiManager.startScan();
+                    }
+                });
+
+        AlertDialog alert11 = builder1.create();
+        alert11.show();
+    }
+
+    @Override
+    public void OnCardClicked(View view, int position, List<ScanResult> list) {
+
+        progress = new ProgressDialog(WiFiList.this);
+        progress.setIndeterminate(true);
+        progress.setMessage("Connecting...");
+        progress.setCancelable(false);
+
+        final ScanResult scanResult = list.get(position);
+
+        final String securityMode = getScanResultSecurity(scanResult);
+
+        int netId = -1;
+        for (WifiConfiguration tmp : wifiManager.getConfiguredNetworks()) {
+            if (tmp.SSID.equals("\"" + scanResult.SSID + "\"")) {
+
+                netId = tmp.networkId;
+                wifiManager.enableNetwork(netId, true);
+                progress.show();
+                moveIfConnected();
+                return;
+
+            }
+        }
+
+        if(securityMode.equals("WEP") || securityMode.equals("PSK")){
+            LayoutInflater factory = LayoutInflater.from(WiFiList.this);
+            final View confirmDialogView = factory.inflate(R.layout.alert_security, null);
+            final Dialog confirmDialog = new Dialog(WiFiList.this);
+            confirmDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+            confirmDialog.setContentView(confirmDialogView);
+            ((TextView)confirmDialogView.findViewById(R.id.wifiname)).setText(scanResult.SSID);
+            ((TextView)confirmDialogView.findViewById(R.id.security)).setText(securityMode);
+
+            confirmDialogView.findViewById(R.id.cancel).setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    confirmDialog.dismiss();
+                }
+            });
+            confirmDialogView.findViewById(R.id.connect).setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    confirmDialog.dismiss();
+                    connectToAP(securityMode,((EditText)confirmDialogView.findViewById(R.id.pass)).getText().toString(),scanResult);
+                    progress.show();
+                    moveIfConnected();
+                }
+            });
+            confirmDialog.show();
+        } else {
+            connectToAP(securityMode,"",scanResult);
+        }
+    }
+
+    public class WifiReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+
+            WifiManager mWifiManager = (WifiManager)
+                    context.getSystemService(Context.WIFI_SERVICE);
+
+            if (intent.getAction().equals(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)) {
+
+                mScanResults = mWifiManager.getScanResults();
+                for(int i=0;i<mScanResults.size();i++){
+                    ScanResult scanResult=mScanResults.get(i);
+                    if(scanResult.SSID.matches("")||scanResult.SSID==null){
+                       mScanResults.remove(i);
+                    }
+//                    Log.e("hejwdjkasdjkbasjkfbjas",scanResult.SSID+" "+scanResult.BSSID+" "+scanResult.toString());
+                }
+                wiFiListAdapter = new WiFiListAdapter(mScanResults, WiFiList.this);
+                wiFiListAdapter.setOnCardClickListner(WiFiList.this);
+
+                if(mScanResults.size() > 0 ){
+                    textviewFetch.setVisibility(View.GONE);
+                    rvWifiList.setVisibility(View.VISIBLE);
+                    rvWifiList.setAdapter(wiFiListAdapter);
+                }
+            }
+        }
+    }
+
+    public String getScanResultSecurity(ScanResult scanResult) {
+
+        final String cap = scanResult.capabilities;
+        final String[] securityModes = {"WEP", "PSK"};
+
+        for (int i = securityModes.length - 1; i >= 0; i--) {
+            if (cap.contains(securityModes[i])) {
+                return securityModes[i];
+            }
+        }
+
+        return "OPEN";
+    }
+
+    public int connectToAP(String securityMode,String networkPasskey,ScanResult scanResult) {
+
+                WifiConfiguration wifiConfiguration = createAPConfiguration(scanResult.SSID, networkPasskey, securityMode);
+                wifiConfiguration.priority = 5000;
+                wifiManager.updateNetwork(wifiConfiguration);
+                wifiManager.saveConfiguration();
+
+                int res = wifiManager.addNetwork(wifiConfiguration);
+                Log.d(TAG, "# addNetwork returned " + res);
+
+                boolean b = wifiManager.enableNetwork(res, true);
+                Log.d(TAG, "# enableNetwork returned " + b);
+
+                wifiManager.setWifiEnabled(true);
+
+                boolean changeHappen = wifiManager.saveConfiguration();
+
+                if (res != -1 && changeHappen) {
+                    Log.d(TAG, "# Change happen");
+//                    connectedSsidName = networkSSID;
+                } else {
+                    Log.d(TAG, "# Change NOT happen");
+                }
+
+                return res;
+            }
+
+    private WifiConfiguration createAPConfiguration(String networkSSID, String networkPasskey, String securityMode) {
+        WifiConfiguration wifiConfiguration = new WifiConfiguration();
+
+        wifiConfiguration.SSID = "\"" + networkSSID + "\"";
+
+        if (securityMode.equalsIgnoreCase("OPEN")) {
+
+            wifiConfiguration.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
+
+        } else if (securityMode.equalsIgnoreCase("WEP")) {
+
+            wifiConfiguration.wepKeys[0] = "\"" + networkPasskey + "\"";
+            wifiConfiguration.wepTxKeyIndex = 0;
+            wifiConfiguration.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
+            wifiConfiguration.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.WEP40);
+
+        } else if (securityMode.equalsIgnoreCase("PSK")) {
+
+            wifiConfiguration.preSharedKey = "\"" + networkPasskey + "\"";
+            wifiConfiguration.hiddenSSID = true;
+            wifiConfiguration.status = WifiConfiguration.Status.ENABLED;
+            wifiConfiguration.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.TKIP);
+            wifiConfiguration.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.CCMP);
+            wifiConfiguration.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA_PSK);
+            wifiConfiguration.allowedPairwiseCiphers.set(WifiConfiguration.PairwiseCipher.TKIP);
+            wifiConfiguration.allowedPairwiseCiphers.set(WifiConfiguration.PairwiseCipher.CCMP);
+            wifiConfiguration.allowedProtocols.set(WifiConfiguration.Protocol.RSN);
+            wifiConfiguration.allowedProtocols.set(WifiConfiguration.Protocol.WPA);
+
+        } else {
+            Log.i(TAG, "# Unsupported security mode: "+securityMode);
+
+            return null;
+        }
+
+        return wifiConfiguration;
+
+    }
+
+    private void moveIfConnected(){
+        thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    sleep(2000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                while (true) {
+                    ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+                    NetworkInfo wifi = cm.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+
+                    if (wifi.isConnected()) {
+
+                        if ((progress != null) && progress.isShowing()) {
+                            progress.dismiss();
+                        }
+
+                        Intent transfer = new Intent(WiFiList.this,DashBoard.class);
+                        startActivity(transfer);
+
+                        break;
+                    }
+                }
+            }});
+        thread.start();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unregisterReceiver(wifiReceiver);
+    }
+
+}
