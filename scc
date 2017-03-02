@@ -1,0 +1,54 @@
+package in.co.surya.suryabulb.Helper;
+
+import android.os.AsyncTask;
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+
+/**
+ * Created by sdas on 02-03-2017.
+ */
+
+public class SocketConnectionCheck extends AsyncTask<Void,Void,Boolean> {
+    String host = "10.10.100.254";
+    int port = 8899;
+    @Override
+    protected void onPreExecute() {
+        super.onPreExecute();
+    }
+
+    @Override
+    protected void onPostExecute(Boolean aBoolean) {
+        super.onPostExecute(aBoolean);
+    }
+
+    @Override
+    protected Boolean doInBackground(Void... voids) {
+        Socket socket = new Socket();
+        try {
+
+
+            socket.connect((new InetSocketAddress(host, port)));
+            if(socket.isConnected()){
+                return true;
+            }
+
+            return false;
+        } catch (IOException e) {
+            return false;
+        } finally {
+            if (socket != null) {
+                if (socket.isConnected()) {
+                    try {
+
+                        socket.close();
+                    } catch (IOException e) {
+                        return false;
+                    }
+                }
+            }
+        }
+
+    }
+}
