@@ -1,0 +1,640 @@
+package in.co.surya.suryabulb.Helper;
+
+import android.util.Log;
+
+import java.io.UnsupportedEncodingException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.concurrent.ExecutionException;
+
+/**
+ * Created by sdas on 28-02-2017.
+ */
+
+public class DataHandler {
+    private String[] methodName = new String[5];
+    private String[] splitStrings = new String[5];
+    private String resultString = new String();
+
+    public String getLiveVoltage() {
+        methodName[0] = "DMU00@\r\n";
+        try {
+            resultString = new SocketConnection().execute(methodName).get();
+            if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                splitStrings = resultString.split("@");
+                float voltage = Float.parseFloat(splitStrings[1]) / 10;
+                Log.e("getLiveVoltage", String.format("%.1f", voltage));
+                return String.format("%.1f", voltage);
+            }
+            return null;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public boolean setDate(String dateString) {
+//        SimpleDateFormat dateFormatToParse = new SimpleDateFormat("dd/MM/yyyy");
+//        Date date = new Date();
+//        try {
+//            date = dateFormatToParse.parse(dateString);
+//        } catch (ParseException e) {
+//            e.printStackTrace();
+//        }
+//        methodName[0] = "DMU01@" + dateFormatToParse.format(date).toString() + "@\r\n";
+        methodName[0] = "DMU01@" + dateString + "@\r\n";
+        try {
+            resultString = new SocketConnection().execute(methodName).get();
+            if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                splitStrings = resultString.split("@");
+                Log.e("setDate", splitStrings[1]);
+                if (splitStrings[0].matches("OK")) {
+                    return true;
+                }
+                return false;
+            }
+            return false;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public String getDate() {
+        methodName[0] = "DMU02@\r\n";
+        try {
+            resultString = new SocketConnection().execute(methodName).get();
+            if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                splitStrings = resultString.split("@");
+                SimpleDateFormat dateFormatToParse = new SimpleDateFormat("ddMMyyyy");
+                SimpleDateFormat dateFormatToShow = new SimpleDateFormat("dd/MM/yyyy");
+                Date date = dateFormatToParse.parse(splitStrings[1]);
+                Log.e("getDate", dateFormatToShow.format(date));
+                return dateFormatToShow.format(date);
+            }
+            return null;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public boolean setTime(String timeString) {
+        SimpleDateFormat timeFormatToSend = new SimpleDateFormat("HH:mm:ss");
+        SimpleDateFormat timeFormatToParse = new SimpleDateFormat("hh:mm:ss a");
+        Date time = new Date();
+        try {
+            time = timeFormatToParse.parse(timeString);
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+
+        methodName[0] = "DMU03@" + timeFormatToSend.format(time) + "@\r\n";
+        try {
+            resultString = new SocketConnection().execute(methodName).get();
+            if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                splitStrings = resultString.split("@");
+                Log.e("setTime", splitStrings[1]);
+                if (splitStrings[0].matches("OK")) {
+                    return true;
+                }
+                return false;
+            }
+            return false;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public String getTime() {
+        methodName[0] = "DMU04@\r\n";
+        try {
+            resultString = new SocketConnection().execute(methodName).get();
+            if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                splitStrings = resultString.split("@");
+                SimpleDateFormat timeFormatToParse = new SimpleDateFormat("HHmmss");
+                SimpleDateFormat timeFormatToShow = new SimpleDateFormat("hh:mm:ss a");
+                Date time = timeFormatToParse.parse(splitStrings[1]);
+                Log.e("getTime", timeFormatToShow.format(time));
+                return timeFormatToShow.format(time);
+            }
+            return null;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    //pass protected
+    public boolean setPeriodicMemReset() {
+        methodName[0] = "DMU05@1@\r\n";
+        try {
+            resultString = new SocketConnection().execute(methodName).get();
+            if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                splitStrings = resultString.split("@");
+                Log.e("setPeriodicMemReset", splitStrings[1]);
+                if (splitStrings[0].matches("OK")) {
+                    return true;
+                }
+                return false;
+            }
+            return false;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    //pass protected
+    public boolean setAlarmMemReset() {
+        methodName[0] = "DMU07@1@\r\n";
+        try {
+            resultString = new SocketConnection().execute(methodName).get();
+            if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                splitStrings = resultString.split("@");
+                Log.e("setAlarmMemReset", splitStrings[1]);
+                if (splitStrings[0].matches("OK")) {
+                    return true;
+                }
+                return false;
+            }
+            return false;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public String getRunHour() {
+        methodName[0] = "DMU09@\r\n";
+        try {
+            resultString = new SocketConnection().execute(methodName).get();
+            if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                splitStrings = resultString.split("@");
+                if (!splitStrings[1].matches("FAIL")) {
+                    int hour = Integer.parseInt(splitStrings[1].trim());
+                    Log.e("getRunHour", Integer.toString(hour));
+                    return Integer.toString(hour);
+                }
+            }
+            return null;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public boolean setUserSelectLogTime(int type) {
+        methodName[0] = "DMU10@" + type + "@\r\n";
+        try {
+            resultString = new SocketConnection().execute(methodName).get();
+            if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                splitStrings = resultString.split("@");
+                Log.e("setUserSelectLogTime", splitStrings[1]);
+                if (splitStrings[0].matches("OK")) {
+                    return true;
+                }
+                return false;
+            }
+            return false;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public String getUserSelectLogTime() {
+        methodName[0] = "DMU11@\r\n";
+        try {
+            resultString = new SocketConnection().execute(methodName).get();
+            if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                splitStrings = resultString.split("@");
+                if (!splitStrings[1].matches("FAIL")) {
+                    int logTime = Integer.parseInt(splitStrings[1].trim());
+                    Log.e("getUserSelectLogTime", Integer.toString(logTime));
+                    switch (logTime) {
+                        case 0:
+                            return "Second";
+                        case 1:
+                            return "Minute";
+                        case 2:
+                            return "Hour";
+                        default:
+                            return null;
+                    }
+                }
+            }
+            return null;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    public boolean setUserSelectLogTimeValue(int value) {
+        methodName[0] = "DMU12@" + value + "@\r\n";
+        try {
+            resultString = new SocketConnection().execute(methodName).get();
+            if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                splitStrings = resultString.split("@");
+                Log.e("setUserSelectLogTimeVal", splitStrings[1]);
+                if (splitStrings[1].trim().matches("OK")) {
+                    return true;
+                }
+                return false;
+            }
+            return false;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public String getUserSelectLogTimeValue() {
+        methodName[0] = "DMU13@\r\n";
+        try {
+            resultString = new SocketConnection().execute(methodName).get();
+            if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                splitStrings = resultString.split("@");
+                if (!splitStrings[1].matches("FAIL")) {
+                    int logTimeVal = Integer.parseInt(splitStrings[1].trim());
+                    Log.e("getUserSelectLogTimeVal", Integer.toString(logTimeVal));
+                    return Integer.toString(logTimeVal);
+                }
+            }
+            return null;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    //pass protected
+    public boolean setRunhourONOFFCycleReset() {
+        methodName[0] = "DMU14@1@\r\n";
+        try {
+            resultString = new SocketConnection().execute(methodName).get();
+            if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                splitStrings = resultString.split("@");
+                Log.e("setRunhourONOFFCycleRes", splitStrings[1]);
+                if (splitStrings[0].matches("OK")) {
+                    return true;
+                }
+                return false;
+            }
+            return false;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+    public String getLoggingMode() {
+        methodName[0] = "DMU17@\r\n";
+        try {
+            resultString = new SocketConnection().execute(methodName).get();
+            if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                splitStrings = resultString.split("@");
+                if (!splitStrings[1].matches("FAIL")) {
+                    int cycle = Integer.parseInt(splitStrings[1].trim());
+                    Log.e("getLoggingMode", Integer.toString(cycle));
+                    return Integer.toString(cycle);
+                }
+            }
+            return null;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    public boolean setLoggingMode(int mode) {
+        methodName[0] = "DMU16@"+mode+"@\r\n";
+        try {
+            resultString = new SocketConnection().execute(methodName).get();
+            if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                splitStrings = resultString.split("@");
+                Log.e("setLoggingMode", splitStrings[1]);
+                if (splitStrings[0].matches("OK")) {
+                    return true;
+                }
+                return false;
+            }
+            return false;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    //pass protected
+    public boolean setApplyDefaultConfigurationSetting() {
+        methodName[0] = "DMU20@1@\r\n";
+        try {
+            resultString = new SocketConnection().execute(methodName).get();
+            if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                splitStrings = resultString.split("@");
+                Log.e("setApplyDefaultConSet", splitStrings[1]);
+                if (splitStrings[0].matches("OK")) {
+                    return true;
+                }
+                return false;
+            }
+            return false;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    //pass protected
+    public boolean setApplyNewConfigurationSetting() {
+        methodName[0] = "DMU21@1@\r\n";
+        try {
+            resultString = new SocketConnection().execute(methodName).get();
+            if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                splitStrings = resultString.split("@");
+                Log.e("setApplyNewConSet", splitStrings[1]);
+                if (splitStrings[0].matches("OK")) {
+                    return true;
+                }
+                return false;
+            }
+            return false;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+    public String getONOFFCycle() {
+        methodName[0] = "DMU22@\r\n";
+        try {
+            resultString = new SocketConnection().execute(methodName).get();
+            if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                splitStrings = resultString.split("@");
+                if (!splitStrings[1].matches("FAIL")) {
+                    int cycle = Integer.parseInt(splitStrings[1].trim());
+                    Log.e("getONOFFCycle", Integer.toString(cycle));
+                    return Integer.toString(cycle);
+                }
+            }
+            return null;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    public String getONTimeLog() {
+        methodName[0] = "DMU23@\r\n";
+        try {
+            resultString = new SocketConnection().execute(methodName).get();
+            if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                splitStrings = resultString.split("@");
+                SimpleDateFormat timeFormatToParse = new SimpleDateFormat("ddMMyyyyHHmmss");
+                SimpleDateFormat timeFormatToShow = new SimpleDateFormat("dd/MM/yyyy'\n'hh:mm:ss a");
+                Date datetime = timeFormatToParse.parse(splitStrings[1]);
+                Log.e("getONTimeLog", timeFormatToShow.format(datetime));
+                return timeFormatToShow.format(datetime);
+            }
+            return null;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    public String getOFFTimeLog() {
+        methodName[0] = "DMU24@\r\n";
+        try {
+            resultString = new SocketConnection().execute(methodName).get();
+            if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                splitStrings = resultString.split("@");
+                SimpleDateFormat timeFormatToParse = new SimpleDateFormat("ddMMyyyyHHmmss");
+                SimpleDateFormat timeFormatToShow = new SimpleDateFormat("dd/MM/yyyy'\n'hh:mm:ss a");
+                Date datetime = timeFormatToParse.parse(splitStrings[1]);
+                Log.e("getOFFTimeLog", timeFormatToShow.format(datetime));
+                return timeFormatToShow.format(datetime);
+            }
+            return null;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    //pass protected
+    public boolean setCalibration(int mode) {
+        if(setDefaultCalibration()) {
+            methodName[0] = "DMU29@" + mode + "@\r\n";
+            try {
+                resultString = new SocketConnection().execute(methodName).get();
+                if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                    splitStrings = resultString.split("@");
+                    Log.e("setCalibration", splitStrings[1]);
+                    if (splitStrings[0].matches("OK")) {
+                        return true;
+                    }
+                    return false;
+                }
+                return false;
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } catch (ExecutionException e) {
+                e.printStackTrace();
+            }
+            return false;
+        }
+        return false;
+    }
+    //pass protected
+    public boolean setDefaultCalibration() {
+        methodName[0] = "DMU30@1@\r\n";
+        try {
+            resultString = new SocketConnection().execute(methodName).get();
+            if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                splitStrings = resultString.split("@");
+                Log.e("setDefaultCalibration", splitStrings[1]);
+                if (splitStrings[0].matches("OK")) {
+                    return true;
+                }
+                return false;
+            }
+            return false;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+    public String DMUPassFail() {
+        methodName[0] = "DMU31@\r\n";
+        try {
+            resultString = new SocketConnection().execute(methodName).get();
+            if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                splitStrings = resultString.split("@");
+                    int connected = Integer.parseInt(splitStrings[1].trim());
+                    Log.e("DMUPassFail", Integer.toString(connected));
+                    return Integer.toString(connected);
+
+            }
+            return null;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    public String getCTCount() {
+        methodName[0] = "DMU32@\r\n";
+        try {
+            resultString = new SocketConnection().execute(methodName).get();
+            if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                splitStrings = resultString.split("@");
+                int count = Integer.parseInt(splitStrings[1].trim());
+                Log.e("getCTCount", Integer.toString(count));
+                return Integer.toString(count);
+
+            }
+            return null;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    public boolean setCTCount(int count) {
+        methodName[0] = "DMU33@"+count+"@\r\n";
+        try {
+            resultString = new SocketConnection().execute(methodName).get();
+            if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                splitStrings = resultString.split("@");
+                Log.e("setCTCount", splitStrings[1]);
+                if (splitStrings[0].matches("OK")) {
+                    return true;
+                }
+                return false;
+            }
+            return false;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+    public String getPeriodicMemLog(int value) {
+        methodName[0] = "DMU25@"+value+"@\r\n";
+        try {
+            resultString = new SocketConnection().execute(methodName).get();
+            if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                return resultString;
+            }
+            return null;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    public String getAlarmMemLog() {
+        methodName[0] = "DMU27@\r\n";
+        try {
+            resultString = new SocketConnection().execute(methodName).get();
+            if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                return resultString;
+            }
+            return null;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }public String getMemMasterInfo(int value) {
+        methodName[0] = "DMU26@"+value+"@\r\n";
+        try {
+            resultString = new SocketConnection().execute(methodName).get();
+            if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                return resultString;
+            }
+            return null;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    //pass protected
+    public boolean setMemMasterInfoReset() {
+        methodName[0] = "DMU28@1@\r\n";
+        try {
+            resultString = new SocketConnection().execute(methodName).get();
+            if (resultString != null && !resultString.matches("") && !resultString.matches("WrongCommand@")) {
+                splitStrings = resultString.split("@");
+                Log.e("setMemMasterInfoReset", splitStrings[1]);
+                if (splitStrings[0].matches("OK")) {
+                    return true;
+                }
+                return false;
+            }
+            return false;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+
+}
