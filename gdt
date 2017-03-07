@@ -5,14 +5,11 @@ import android.app.TimePickerDialog;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
-import android.net.Uri;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
-import android.util.Log;
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
@@ -26,45 +23,40 @@ import android.widget.TextView;
 import android.widget.TimePicker;
 
 import java.util.Calendar;
-import java.util.StringTokenizer;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import in.co.surya.suryabulb.Activity.DashBoard;
 import in.co.surya.suryabulb.Helper.DataHandler;
 import in.co.surya.suryabulb.Helper.DatePickerFragment;
+import in.co.surya.suryabulb.Helper.FlagsData;
 import in.co.surya.suryabulb.Helper.TimerPickerFragment;
 import in.co.surya.suryabulb.R;
 
 
 public class GetData extends Fragment implements View.OnClickListener {
 
-    private TextView textviewGetVoltage, textviewGetDate, textviewGetTime, textviewGetLogMode,
-            textviewGetUserLogTime, textviewGetUserLogTimeVal, textviewGetCycle,
-            textviewGetOnTimeLog, textviewGetOffTimeLog, textviewGetRunHour,textviewGetDMUStatus,
-            textviewGetCTCount;
-    private EditText edittextSetDate, edittextSetTime, edittextSetUserLogTimeVal, edittextSetCTPoint;
-    private Button buttonSetDate, buttonSetTime, buttonSetLoggingMode, buttonSetUserLogTime,
-            buttonSetUserLogTimeVal, buttonSetCTPoint;
-
-    private Spinner spinnerSetLogMode, spinnerSetUserLogTime;
-
-    private ScrollView scroll;
-
-    private FloatingActionButton fab;
-
     String[] LOG_MODE = {"[--Log Mode--]", "Hold", "Overlap"};
     String[] USER_LOG_TIME = {"[--User Log Time--]", "Second", "Minute", "Hour"};
-
-    private DataHandler dataHandler;
-
     int hours = -1;
     int minutes = -1;
     int day = 0;
     int month = 0;
     int year = 0;
+    private TextView textviewGetVoltage, textviewGetDate, textviewGetTime, textviewGetLogMode,
+            textviewGetUserLogTime, textviewGetUserLogTimeVal, textviewGetCycle,
+            textviewGetOnTimeLog, textviewGetOffTimeLog, textviewGetRunHour, textviewGetDMUStatus,
+            textviewGetCTCount;
+    private EditText edittextSetDate, edittextSetTime, edittextSetUserLogTimeVal, edittextSetCTPoint;
+    private Button buttonSetDate, buttonSetTime, buttonSetLoggingMode, buttonSetUserLogTime,
+            buttonSetUserLogTimeVal, buttonSetCTPoint;
+    private Spinner spinnerSetLogMode, spinnerSetUserLogTime;
+    private ScrollView scroll;
+    private FloatingActionButton fab;
+    private DataHandler dataHandler;
+    private Thread thread;
+
 
     public GetData() {
         // Required empty public constructor
@@ -124,126 +116,159 @@ public class GetData extends Fragment implements View.OnClickListener {
         buttonSetCTPoint.setOnClickListener(this);
         fab.setOnClickListener(this);
 
-        edittextSetDate.setOnTouchListener(new View.OnTouchListener() {
+//        CSVReader csvReader = new CSVReader(getActivity());
+
+        edittextSetDate.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
-            public boolean onTouch(View view, MotionEvent motionEvent) {
-                if (motionEvent.getAction() == MotionEvent.ACTION_DOWN){
-                    //close keyboard
-                    InputMethodManager imm = (InputMethodManager) view.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-                    if (imm != null) {
-                        imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
-                    }
-                    DatePickerFragment date = new DatePickerFragment();
-                    Calendar calender = Calendar.getInstance();
-                    Bundle args = new Bundle();
-                    int thisDay = day;
-                    int thisYear = year;
-                    int thisMonth = month;
-                    if (thisDay == 0)
-                        thisDay = calender.get(Calendar.DAY_OF_MONTH);
-                    if (thisYear == 0)
-                        thisYear = calender.get(Calendar.YEAR);
-                    if (thisMonth == 0)
-                        thisMonth = calender.get(Calendar.MONTH);
-                    args.putInt("year", thisYear);
-                    args.putInt("month", thisMonth);
-                    args.putInt("day", thisDay);
-
-                    date.setArguments(args);
-
-                    date.setCallBack(ondate);
-                    date.show(getFragmentManager(), "Date Picker");
-
+            public void onFocusChange(View view, boolean b) {
+                if (b) {
+                    view.performClick();
                 }
-                return true;
             }
+        });
+
+        edittextSetDate.setOnClickListener(new View.OnClickListener() {
             DatePickerDialog.OnDateSetListener ondate = new DatePickerDialog.OnDateSetListener() {
 
                 public void onDateSet(DatePicker view, int year1, int monthOfYear,
                                       int dayOfMonth) {
-                    try{
+                    try {
                         day = dayOfMonth;
                         month = monthOfYear;
                         year = year1;
-                        edittextSetDate.setText(String.format("%1$02d",dayOfMonth) + "/" + String.format("%1$02d",monthOfYear + 1)
+                        edittextSetDate.setText(String.format("%1$02d", dayOfMonth) + "/" + String.format("%1$02d", monthOfYear + 1)
                                 + "/" + String.valueOf(year1));
-                    } catch(Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-            };
-        });
-
-        edittextSetTime.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View view, MotionEvent motionEvent) {
-                if (motionEvent.getAction() == MotionEvent.ACTION_DOWN) {
-                    //close keyboard
-                    InputMethodManager imm = (InputMethodManager) view.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-                    if (imm != null) {
-                        imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
-                    }
-
-                    try {
-                        TimerPickerFragment newFragment = new TimerPickerFragment();
-                        Bundle args = new Bundle();
-                        args.putInt("hours", hours);
-                        args.putInt("minutes", minutes);
-                        newFragment.setArguments(args);
-                        newFragment.setCallBack(onTimeSet);
-                        newFragment.show(getFragmentManager(), "timePicker");
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
                 }
-                return true;
+            };
+
+            @Override
+            public void onClick(View view) {
+                //close keyboard
+                InputMethodManager imm = (InputMethodManager) view.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+                if (imm != null) {
+                    imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+                }
+
+                DatePickerFragment date = new DatePickerFragment();
+                Calendar calender = Calendar.getInstance();
+                Bundle args = new Bundle();
+                int thisDay = day;
+                int thisYear = year;
+                int thisMonth = month;
+                if (thisDay == 0)
+                    thisDay = calender.get(Calendar.DAY_OF_MONTH);
+                if (thisYear == 0)
+                    thisYear = calender.get(Calendar.YEAR);
+                if (thisMonth == 0)
+                    thisMonth = calender.get(Calendar.MONTH);
+                args.putInt("year", thisYear);
+                args.putInt("month", thisMonth);
+                args.putInt("day", thisDay);
+
+                date.setArguments(args);
+
+                date.setCallBack(ondate);
+                date.show(getFragmentManager(), "Date Picker");
             }
+        });
 
+        edittextSetTime.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View view, boolean b) {
+                if (b) {
+                    view.performClick();
+                }
+            }
+        });
+
+        edittextSetTime.setOnClickListener(new View.OnClickListener() {
             TimePickerDialog.OnTimeSetListener onTimeSet = new TimePickerDialog.OnTimeSetListener() {
-
                 public void onTimeSet(TimePicker view, int hourOfDay, int minute) {
                     hours = hourOfDay;
                     minutes = minute;
-                    if(hourOfDay >12) {
+                    if (hourOfDay > 12) {
                         edittextSetTime.setText(String.format("%02d", hourOfDay - 12) + ":" + String.format("%02d", minute) + ":" + "00" + " " + "PM");
-                    }
-                    else {
+                    } else {
                         edittextSetTime.setText(String.format("%02d", hourOfDay) + ":" + String.format("%02d", minute) + ":" + "00" + " " + "AM");
                     }
                 }
             };
-        });
-        final Timer timer = new Timer();
-        timer.schedule(new TimerTask()
-        {
+
             @Override
-            public void run()
-            {
-                if(getActivity()!=null) {
-                    getActivity().runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (dataHandler.getLiveVoltage() != null) {
-                                textviewGetVoltage.setText(dataHandler.getLiveVoltage() + "V");
-                            }
-                        }
-                    });
-                }
-                else {
-                    timer.cancel();
+            public void onClick(View view) {
+                //close keyboard
+                InputMethodManager imm = (InputMethodManager) view.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+                if (imm != null) {
+                    imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
                 }
 
+                try {
+                    TimerPickerFragment newFragment = new TimerPickerFragment();
+                    Bundle args = new Bundle();
+                    args.putInt("hours", hours);
+                    args.putInt("minutes", minutes);
+                    newFragment.setArguments(args);
+                    newFragment.setCallBack(onTimeSet);
+                    newFragment.show(getFragmentManager(), "timePicker");
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
-        }, 0, 5000);
-//        ScheduledExecutorService scheduleTaskExecutor = Executors.newScheduledThreadPool(5);
-//
-//        scheduleTaskExecutor.scheduleAtFixedRate(new Runnable() {
+        });
+
+//        final Timer timer = new Timer();
+//        timer.schedule(new TimerTask() {
+//            @Override
 //            public void run() {
-//                if(dataHandler.getLiveVoltage() != null) {
-//                    textviewGetVoltage.setText(dataHandler.getLiveVoltage() + "V");
+//                if (getActivity() != null) {
+//                    getActivity().runOnUiThread(new Runnable() {
+//                        @Override
+//                        public void run() {
+//                            if (dataHandler.getLiveVoltage() != null) {
+//                                textviewGetVoltage.setText(dataHandler.getLiveVoltage() + "V");
+//                                ((DashBoard) getActivity()).setConnectedStatus(true);
+//                            } else {
+//                                ((DashBoard) getActivity()).setConnectedStatus(false);
+//                            }
+//                        }
+//                    });
+//                } else {
+//                    timer.cancel();
 //                }
+//
 //            }
-//        }, 0, 5, TimeUnit.SECONDS);
+//        }, 0, 5000);
+        final ScheduledExecutorService scheduleTaskExecutor = Executors.newScheduledThreadPool(5);
+
+        scheduleTaskExecutor.scheduleAtFixedRate(new Runnable() {
+            @Override
+            public void run() {
+
+                if (getActivity() != null) {
+                    if(!FlagsData.gettingData) {
+                        if(getUserVisibleHint()) {
+                            final String voltage = dataHandler.getLiveVoltage();
+                            getActivity().runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    if (voltage != null) {
+                                        textviewGetVoltage.setText(voltage + "V");
+                                        ((DashBoard) getActivity()).setConnectedStatus(true);
+                                    } else {
+                                        ((DashBoard) getActivity()).setConnectedStatus(false);
+                                    }
+                                }
+                            });
+                        }
+                    }
+                } else {
+                    scheduleTaskExecutor.shutdown();
+                }
+            }
+        }, 1, 5, TimeUnit.SECONDS);
 
         return view;
     }
@@ -252,146 +277,344 @@ public class GetData extends Fragment implements View.OnClickListener {
     @Override
     public void onClick(View view) {
 
-        switch (view.getId()){
+        switch (view.getId()) {
             case R.id.buttonSetDate:
-                if(edittextSetDate.getText().toString() == null || edittextSetDate.getText().toString().isEmpty()){
-                    setSnackBar("Please Select Date");
-                } else {
-                    dataHandler.setDate(edittextSetDate.getText().toString());
-                    setSnackBar("Date Is Set Successfully");
-                }
+                thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (edittextSetDate.getText().toString() == null || edittextSetDate.getText().toString().isEmpty()) {
+                            setSnackBar("Please Select Date");
+                        } else {
+                            boolean success = dataHandler.setDate(edittextSetDate.getText().toString());
+                            if (success) {
+                                setSnackBar("Date Is Set Successfully");
+                                getActivity().runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        edittextSetDate.setText("");
+                                    }
+                                });
+                            } else {
+                                setSnackBar("Something Went Wrong Please Try After Sometime");
+                            }
+
+                        }
+                    }
+                });
+                thread.start();
                 break;
             case R.id.buttonSetTime:
-                if(edittextSetTime.getText().toString() == null || edittextSetTime.getText().toString().isEmpty()){
-                    setSnackBar("Please Select Time");
-                } else {
-                    dataHandler.setTime(edittextSetTime.getText().toString());
-                    setSnackBar("Time Is Set Successfully");
-                }
+                thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (edittextSetTime.getText().toString() == null || edittextSetTime.getText().toString().isEmpty()) {
+                            setSnackBar("Please Select Time");
+                        } else {
+                            boolean success = dataHandler.setTime(edittextSetTime.getText().toString());
+                            if (success) {
+                                setSnackBar("Time Is Set Successfully");
+                                getActivity().runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        edittextSetTime.setText("");
+                                    }
+                                });
+                            } else {
+                                setSnackBar("Something Went Wrong Please Try After Sometime");
+                            }
+                        }
+                    }
+                });
+                thread.start();
                 break;
             case R.id.buttonSetLoggingMode:
-                if(spinnerSetLogMode.getSelectedItem().toString() != LOG_MODE[0]) {
-                    switch (spinnerSetLogMode.getSelectedItem().toString()) {
-                        case "Hold":
-                            dataHandler.setLoggingMode(0);
-                            setSnackBar("Log Mode Is Set Successfully");
-                            break;
-                        case "Overlap":
-                            dataHandler.setLoggingMode(1);
-                            setSnackBar("Log Mode Is Set Successfully");
-                            break;
+                thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (spinnerSetLogMode.getSelectedItem().toString() != LOG_MODE[0]) {
+                            boolean success = false;
+                            switch (spinnerSetLogMode.getSelectedItem().toString()) {
+                                case "Hold":
+                                    success = dataHandler.setLoggingMode(0);
+                                    break;
+                                case "Overlap":
+                                    success = dataHandler.setLoggingMode(1);
+                                    break;
+                            }
+                            if (success) {
+                                setSnackBar("Log Mode Is Set Successfully");
+                                getActivity().runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        spinnerSetLogMode.setSelection(0);
+                                    }
+                                });
+                            } else {
+                                setSnackBar("Something Went Wrong Please Try After Sometime");
+                            }
+                        } else {
+                            setSnackBar("Please Select Log Mode");
+                        }
                     }
-                } else {
-                    setSnackBar("Please Select Log Mode");
-                }
+                });
+                thread.start();
                 break;
             case R.id.buttonSetUserLogTime:
-                if(spinnerSetUserLogTime.getSelectedItem().toString() != USER_LOG_TIME[0]) {
-                    switch (spinnerSetUserLogTime.getSelectedItem().toString()) {
-                        case "Second":
-                            dataHandler.setUserSelectLogTime(0);
-                            setSnackBar("User Log Time Is Set Successfully");
-                            break;
-                        case "Minute":
-                            dataHandler.setUserSelectLogTime(1);
-                            setSnackBar("User Log Time Is Set Successfully");
-                            break;
-                        case "Hour":
-                            dataHandler.setUserSelectLogTime(2);
-                            setSnackBar("User Log Time Is Set Successfully");
-                            break;
+                thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (spinnerSetUserLogTime.getSelectedItem().toString() != USER_LOG_TIME[0]) {
+                            boolean success = false;
+                            switch (spinnerSetUserLogTime.getSelectedItem().toString()) {
+                                case "Second":
+                                    success = dataHandler.setUserSelectLogTime(0);
+                                    break;
+                                case "Minute":
+                                    success = dataHandler.setUserSelectLogTime(1);
+                                    break;
+                                case "Hour":
+                                    success = dataHandler.setUserSelectLogTime(2);
+                                    break;
+                            }
+                            if (success) {
+                                setSnackBar("User Log Time Is Set Successfully");
+                                getActivity().runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        spinnerSetUserLogTime.setSelection(0);
+                                    }
+                                });
+
+                            } else {
+                                setSnackBar("Something Went Wrong Please Try After Sometime");
+                            }
+                        } else {
+                            setSnackBar("Please Select User Log Time");
+                        }
                     }
-                } else {
-                    setSnackBar("Please Select User Log Time");
-                }
+                });
+                thread.start();
                 break;
             case R.id.buttonSetUserLogTimeVal:
-                int i = Integer.parseInt(edittextSetUserLogTimeVal.getText().toString());
-                if(i >= 1 && i <= 168){
-                    dataHandler.setUserSelectLogTimeValue(i);
-                    setSnackBar("User Log Time Value Is Set Successfully");
-                } else {
-                    setSnackBar("Please Enter Value Between 1 to 168");
-                }
+                thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (edittextSetUserLogTimeVal.getText().toString().matches("")) {
+                            setSnackBar("Please Enter User Log Time Value");
+                        } else {
+                            int i = Integer.parseInt(edittextSetUserLogTimeVal.getText().toString());
+                            if (i >= 1 && i <= 168) {
+                                boolean success = dataHandler.setUserSelectLogTimeValue(i);
+                                if (success) {
+                                    setSnackBar("User Log Time Value Is Set Successfully");
+                                    getActivity().runOnUiThread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            edittextSetUserLogTimeVal.setText("");
+                                        }
+                                    });
+                                } else {
+                                    setSnackBar("Something Went Wrong Please Try After Sometime");
+                                }
+                            } else {
+                                setSnackBar("Please Enter Value Between 1 to 168");
+                            }
+                        }
+                    }
+                });
+                thread.start();
                 break;
             case R.id.buttonSetCTPoint:
-                if(edittextSetCTPoint.getText().toString().matches("")){
-                    setSnackBar("Please Enter CT Point Value");
-                } else {
-                    int cityCount = Integer.parseInt(edittextSetCTPoint.getText().toString());
-
-                    if (cityCount >= 0 && cityCount <= 255) {
-                        if(dataHandler.setUserSelectLogTimeValue(cityCount)){
-                            setSnackBar("CT Point Is Set Successfully");
+                thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (edittextSetCTPoint.getText().toString().matches("")) {
+                            setSnackBar("Please Enter CT Point Value");
                         } else {
-                            setSnackBar("Error..");
+                            int cityCount = Integer.parseInt(edittextSetCTPoint.getText().toString());
+
+                            if (cityCount >= 0 && cityCount <= 255) {
+                                if (dataHandler.setCTCount(cityCount)) {
+                                    setSnackBar("CT Point Is Set Successfully");
+                                    getActivity().runOnUiThread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            edittextSetCTPoint.setText("");
+                                        }
+                                    });
+                                } else {
+                                    setSnackBar("Something Went Wrong Please Try After Sometime");
+                                }
+                            } else {
+                                setSnackBar("Please Enter Value Between 0 To 255");
+                            }
                         }
-                    } else {
-                        setSnackBar("Please Enter Value Between 0 to 255");
                     }
-                }
+                });
+                thread.start();
                 break;
             case R.id.fab:
-                scroll.fullScroll(ScrollView.FOCUS_UP);
+//                scroll.fullScroll(ScrollView.FOCUS_UP);
 
 //                if(dataHandler.getLiveVoltage() != null) {
 //                    textviewGetVoltage.setText(dataHandler.getLiveVoltage() + "V");
 //                }
+                Thread thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        FlagsData.gettingData = true;
+                        String response;
+                        if ((response = dataHandler.getLiveVoltage()) != null) {
+                            final String res = response;
+                            getActivity().runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    textviewGetVoltage.setText(res + "V");
+                                }
+                            });
 
-                if(dataHandler.getDate() != null) {
-                    textviewGetDate.setText(dataHandler.getDate());
-                }
+                        }
+                        if ((response = dataHandler.getDate()) != null) {
+                            final String res = response;
+                            getActivity().runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    textviewGetDate.setText(res);
+                                }
+                            });
 
-                if(dataHandler.getTime() != null) {
-                    textviewGetTime.setText(dataHandler.getTime());
-                }
+                        }
 
-                if(dataHandler.getLoggingMode() != null){
-                    switch (dataHandler.getLoggingMode()){
-                        case "0":
-                            textviewGetLogMode.setText("HOLD");
-                            break;
-                        case "1":
-                            textviewGetLogMode.setText("Overlap");
-                            break;
-                         default:
-                             textviewGetLogMode.setText(" ");
-                             break;
+                        if ((response = dataHandler.getTime()) != null) {
+                            final String res = response;
+                            getActivity().runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    textviewGetTime.setText(res);
+                                }
+                            });
+
+                        }
+
+                        if ((response = dataHandler.getLoggingMode()) != null) {
+                            final String res = response;
+                            getActivity().runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    switch (res) {
+                                        case "0":
+                                            textviewGetLogMode.setText("HOLD");
+                                            break;
+                                        case "1":
+                                            textviewGetLogMode.setText("Overlap");
+                                            break;
+                                        default:
+                                            textviewGetLogMode.setText(" ");
+                                            break;
+                                    }
+                                }
+                            });
+
+                        }
+
+                        if ((response = dataHandler.getUserSelectLogTime()) != null) {
+                            final String res = response;
+                            getActivity().runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    textviewGetUserLogTime.setText(res);
+                                }
+                            });
+
+                        }
+
+                        if ((response = dataHandler.getUserSelectLogTimeValue()) != null) {
+                            final String res = response;
+                            getActivity().runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    textviewGetUserLogTimeVal.setText(res);
+                                }
+                            });
+
+                        }
+
+                        if ((response = dataHandler.getONOFFCycle()) != null) {
+                            final String res = response;
+                            getActivity().runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    textviewGetCycle.setText(res);
+                                }
+                            });
+
+                        }
+
+                        if ((response = dataHandler.getONTimeLog()) != null) {
+                            final String res = response;
+                            getActivity().runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    textviewGetOnTimeLog.setText(res);
+                                }
+                            });
+
+                        }
+                        if ((response = dataHandler.getOFFTimeLog()) != null) {
+                            final String res = response;
+                            getActivity().runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    textviewGetOffTimeLog.setText(res);
+                                }
+                            });
+
+                        }
+                        if ((response = dataHandler.getRunHour()) != null) {
+                            final String res = response;
+                            getActivity().runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    textviewGetRunHour.setText(res);
+                                }
+                            });
+
+                        }
+                        if ((response = dataHandler.DMUPassFail()) != null) {
+                            final String res = response;
+                            getActivity().runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    textviewGetDMUStatus.setText(res);
+                                }
+                            });
+
+                        }
+                        if ((response = dataHandler.getCTCount()) != null) {
+                            final String res = response;
+                            getActivity().runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    textviewGetCTCount.setText(res);
+                                }
+                            });
+
+                        }
+
+                        FlagsData.gettingData = false;
                     }
+                });
+                thread.start();
+//                textviewGetVoltage.requestFocus();
+                InputMethodManager imm = (InputMethodManager) view.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+                if (imm != null) {
+                    imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
                 }
-
-                if(dataHandler.getUserSelectLogTime() != null) {
-                    textviewGetUserLogTime.setText(dataHandler.getUserSelectLogTime());
-                }
-
-                if(dataHandler.getUserSelectLogTimeValue() != null) {
-                    textviewGetUserLogTimeVal.setText(dataHandler.getUserSelectLogTimeValue());
-                }
-
-                if(dataHandler.getONOFFCycle() != null){
-                    textviewGetCycle.setText(dataHandler.getONOFFCycle());
-                }
-
-                if(dataHandler.getONTimeLog() != null){
-                    textviewGetOnTimeLog.setText(dataHandler.getONTimeLog());
-                }
-                if(dataHandler.getOFFTimeLog() != null){
-                    textviewGetOffTimeLog.setText(dataHandler.getOFFTimeLog());
-                }
-                if(dataHandler.getRunHour() != null){
-                    textviewGetRunHour.setText(dataHandler.getRunHour());
-                }
-                if(dataHandler.DMUPassFail() != null){
-                    textviewGetDMUStatus.setText(dataHandler.DMUPassFail());
-                }
-                if(dataHandler.getCTCount() != null){
-                    textviewGetCTCount.setText(dataHandler.getCTCount());
-                }
-
+                scroll.fullScroll(ScrollView.FOCUS_UP);
         }
     }
 
-    private void setSnackBar(String message){
+    private void setSnackBar(String message) {
         Snackbar snackbar = Snackbar.make(getView(), message, Snackbar.LENGTH_SHORT);
         Snackbar.SnackbarLayout layout = (Snackbar.SnackbarLayout) snackbar.getView();
         layout.setBackgroundColor(Color.parseColor("#df013A"));
