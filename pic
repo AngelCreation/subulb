@@ -1,0 +1,99 @@
+package in.co.surya.suryabulb.Helper;
+
+import android.annotation.SuppressLint;
+import android.app.DatePickerDialog;
+import android.app.Dialog;
+import android.os.Bundle;
+import android.support.v4.app.DialogFragment;
+
+public class DatePickerFragment extends DialogFragment {
+    DatePickerDialog.OnDateSetListener ondateSet;
+    private DatePickerDialog datepic;
+    private int year, month, day;
+
+    public DatePickerFragment() {
+    }
+
+    public void setCallBack(DatePickerDialog.OnDateSetListener ondate) {
+        ondateSet = ondate;
+    }
+
+    @SuppressLint("NewApi")
+    @Override
+    public void setArguments(Bundle args) {
+        super.setArguments(args);
+        year = args.getInt("year");
+        month = args.getInt("month");
+        day = args.getInt("day");
+    }
+
+    @Override
+    public Dialog onCreateDialog(Bundle savedInstanceState) {
+        datepic = new DatePickerDialog(getActivity(), ondateSet, year, month, day);
+        return datepic;
+    }
+
+}
+
+
+
+
+
+package in.co.surya.suryabulb.Helper;
+
+import android.app.Dialog;
+import android.app.TimePickerDialog;
+import android.os.Bundle;
+import android.support.v4.app.DialogFragment;
+import android.widget.TimePicker;
+
+import java.util.Calendar;
+
+public class TimerPickerFragment extends DialogFragment {
+
+    TimePickerDialog.OnTimeSetListener onTimeSet;
+
+    TimePickerDialog td;
+    PickTime mCallback;
+
+    @Override
+    public Dialog onCreateDialog(Bundle savedInstanceState) {
+        // Use the current time as the default values for the picker
+        final Calendar c = Calendar.getInstance();
+        int hours = c.get(Calendar.HOUR_OF_DAY), minutes = c.get(Calendar.MINUTE), seconds = c.get(Calendar.SECOND);
+        Bundle args = getArguments();
+        if (args.containsKey("hours") && args.containsKey("minutes") && args.containsKey("seconds")) {
+            if (args.getInt("hours") != -1)
+                hours = args.getInt("hours");
+            if (args.getInt("minutes") != -1)
+                minutes = args.getInt("minutes");
+            if (args.getInt("seconds") != -1)
+                seconds = args.getInt("seconds");
+        }
+
+        int hour = hours;
+        int minute = minutes;
+
+        return new TimePickerDialog(getActivity(), onTimeSet, hour, minute, false);
+    }
+
+    public void setCallBack(TimePickerDialog.OnTimeSetListener ondate) {
+        onTimeSet = ondate;
+    }
+
+    public void onTimeSet(TimePicker view, int hourOfDay, int minute) {
+        // Do something with the time chosen by the user
+
+        if (mCallback != null) {
+            StringBuilder sb = new StringBuilder();
+            sb.append(hourOfDay);
+            sb.append(":");
+            sb.append(minute);
+            mCallback.returnTime(sb.toString());
+        }
+    }
+
+    public interface PickTime {
+        void returnTime(String value);
+    }
+}
