@@ -1,0 +1,247 @@
+package in.co.surya.suryabulb.Helper;
+
+import android.app.ProgressDialog;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.net.Uri;
+import android.os.AsyncTask;
+import android.os.Environment;
+import android.support.design.widget.Snackbar;
+import android.util.Log;
+import android.view.View;
+import android.widget.TextView;
+
+import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Arrays;
+import java.util.Date;
+
+/**
+ * Created by sdas on 06-03-2017.
+ */
+
+public class CreatePeriodicLogCsv extends AsyncTask<Void, Void, String> {
+
+    ProgressDialog dialog;
+    Context context;
+    String host = "10.10.100.254";
+    int port = 8899;
+    Socket socket = new Socket();
+    int len;
+    byte buf[] = new byte[252];
+    int total = 0;
+    View view;
+    SimpleDateFormat timetoParse = new SimpleDateFormat("HHmmss");
+    SimpleDateFormat datetoParse = new SimpleDateFormat("ddMMyy");
+    SimpleDateFormat timetosend = new SimpleDateFormat("hh:mm:ss a");
+    SimpleDateFormat datetosend = new SimpleDateFormat("dd/MM/yyyy");
+    StringBuffer stringBufferFinal = new StringBuffer();
+
+
+    public CreatePeriodicLogCsv(Context context,View view) {
+        this.context = context;
+        this.view=view;
+    }
+
+    @Override
+    protected void onPreExecute() {
+        FlagsData.gettingData = true;
+        dialog = new ProgressDialog(context);
+        dialog.setIndeterminate(true);
+        dialog.setMessage("Downloading Periodic Log\nIt May Take Some Time\nPlease Wait....");
+        dialog.setCancelable(false);
+        dialog.show();
+        super.onPreExecute();
+    }
+
+    @Override
+    protected void onPostExecute(final String s) {
+        dialog.dismiss();
+        if(s==null){
+            Snackbar snackbar = Snackbar.make(view, "Something went wrong Please try after sometime", Snackbar.LENGTH_SHORT);
+            Snackbar.SnackbarLayout layout = (Snackbar.SnackbarLayout) snackbar.getView();
+            layout.setBackgroundColor(Color.parseColor("#df013A"));
+            TextView textView = (TextView) layout.findViewById(android.support.design.R.id.snackbar_text);
+            textView.setTypeface(Typeface.DEFAULT_BOLD);
+            snackbar.show();
+            return;
+        }
+        if(s.matches("0")){
+            Snackbar snackbar = Snackbar.make(view, "Periodic Log Data Not Available", Snackbar.LENGTH_SHORT);
+            Snackbar.SnackbarLayout layout = (Snackbar.SnackbarLayout) snackbar.getView();
+            layout.setBackgroundColor(Color.parseColor("#df013A"));
+            TextView textView = (TextView) layout.findViewById(android.support.design.R.id.snackbar_text);
+            textView.setTypeface(Typeface.DEFAULT_BOLD);
+            snackbar.show();
+            return;
+        }
+        Log.e("File",s);
+        final android.support.v7.app.AlertDialog.Builder builder1 = new android.support.v7.app.AlertDialog.Builder(context);
+        builder1.setMessage("Periodic Log Saved Successfully.\nDo You Want To Share Now?");
+        builder1.setCancelable(false);
+
+        builder1.setPositiveButton(
+                "Yes",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int id) {
+
+                        Intent intentShareFile = new Intent(android.content.Intent.ACTION_SEND);
+                        File file=new File(s);
+                        if (file.exists()) {
+                            intentShareFile.setType("application/csv");
+//                            intentShareFile.setType("text/html");
+                            intentShareFile.putExtra(Intent.EXTRA_STREAM, Uri.parse("file://"+file.getAbsolutePath()));
+
+                            intentShareFile.putExtra(Intent.EXTRA_SUBJECT,
+                                    "Periodic Log Data -"+new SimpleDateFormat("dd/MM/yyyy").format(new Date()));
+                            intentShareFile.putExtra(Intent.EXTRA_TEXT, "Hello,\n I Am Sharing Periodic Log Data With You");
+
+                            context.startActivity(Intent.createChooser(intentShareFile, "Share Periodic Log"));
+                        }
+                    }
+                });
+        builder1.setNegativeButton(
+                "No",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int id) {
+                        dialog.cancel();
+
+                    }
+                });
+        android.support.v7.app.AlertDialog alert11 = builder1.create();
+        alert11.show();
+        FlagsData.gettingData = false;
+        super.onPostExecute(s);
+    }
+
+    @Override
+    protected String doInBackground(Void... voids) {
+        try {
+            stringBufferFinal.append("Date,Time,Voltage,Status\n");
+            socket.connect((new InetSocketAddress(host, port)), 2000);
+            DataOutputStream request = new DataOutputStream(socket.getOutputStream());
+            DataInputStream response = new DataInputStream(socket.getInputStream());
+
+
+            ByteArrayInputStream inputStream = new ByteArrayInputStream("DMU27@\r\n".getBytes());
+            while ((len = inputStream.read(buf)) != -1) {
+                request.write(buf, 0, len);
+            }
+            if ((len = response.read(buf)) != -1) {
+                total = Integer.parseInt(new String(Arrays.copyOfRange(buf, 17, 27)).trim());
+//                Log.e("TOTAL", total + "");
+                if (total == 0) {
+                    return "0";
+                }
+            }
+
+            int j = 0;
+            for (int i = 0; i <= (total / 28) + 2; i++) {
+                String Command;
+                if (i == 0) {
+                    Command = "DMU25@0@\r\n";
+                } else {
+                    Command = "DMU25@1@\r\n";
+                }
+                Log.e("Request", Command + "|" + total + "|" + i + "|" + j);
+                inputStream = new ByteArrayInputStream(Command.getBytes());
+                while ((len = inputStream.read(buf)) != -1) {
+                    request.write(buf, 0, len);
+                }
+
+                if ((len = response.read(buf)) != -1) {
+//                    Log.e("Buffer", new String(buf));
+                    if (j < total) {
+                        ByteArrayInputStream responsestream = new ByteArrayInputStream(buf);
+                        byte tempbuf[] = new byte[9];
+                        while (responsestream.read(tempbuf) != -1) {
+                            if (j < total) {
+                                byte date[] = Arrays.copyOfRange(tempbuf, 0, 3);
+                                byte time[] = Arrays.copyOfRange(tempbuf, 3, 6);
+                                byte voltage[] = Arrays.copyOfRange(tempbuf, 6, 8);
+                                byte flag = tempbuf[8];
+                                StringBuffer datebuffer = new StringBuffer();
+                                for (Byte b : date) {
+                                    datebuffer.append(String.format("%1$02d", b));
+                                }
+//                    Log.e("ResponseDate", datebuffer.toString());
+                                StringBuffer timebuffer = new StringBuffer();
+                                for (Byte b : time) {
+                                    timebuffer.append(String.format("%1$02d", b));
+                                }
+//                    Log.e("ResponseTime", timebuffer.toString());
+                                float f = ((float) (voltage[0] << 8) + (float) voltage[1]) / 10;
+//                    Log.e("ResponseVoltage", (voltage[0]<<8)+" "+(voltage[1]) );
+
+//                            Log.e("Response",datetosend.format(datetoParse.parse(datebuffer.toString())) + "," + timetosend.format(timetoParse.parse(timebuffer.toString())) + "," + String.format("%.1f", f) + "\n");
+                                stringBufferFinal.append(datetosend.format(datetoParse.parse(datebuffer.toString())) + "," + timetosend.format(timetoParse.parse(timebuffer.toString())) + "," + String.format("%.1f", f) + "\n");
+                                j++;
+                            } else {
+
+                                break;
+                            }
+
+                        }
+                    } else {
+                        if (new String(buf).contains("getRecords@Err")) {
+                            break;
+                        }
+                    }
+
+//                    if(i==0){
+//                    Thread.sleep(2000);
+//                    }
+//                    bwr.write(stringBufferFinal.toString());
+//                    stringBufferFinal=new StringBuffer();
+
+                }
+            }
+//            Log.e("String Buffer",stringBufferFinal.toString());
+            File CFLDMUDir = new File(Environment.getExternalStorageDirectory() + "/CFL-DMU");
+            if (!CFLDMUDir.exists()) {
+                CFLDMUDir.mkdir();
+            }
+            File PeriodicLogFile = new File(CFLDMUDir + "/PeriodicLog_" + new SimpleDateFormat("ddMMyyHHmmss").format(new Date()) + ".csv");
+//            if(!PeriodicLogFile.exists()){
+//                PeriodicLogFile.createNewFile();
+//            }
+            BufferedWriter bwr = new BufferedWriter(new FileWriter(PeriodicLogFile));
+            bwr.write(stringBufferFinal.toString());
+            bwr.flush();
+            bwr.close();
+            return PeriodicLogFile.getAbsolutePath();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (ParseException e) {
+            e.printStackTrace();
+        } finally {
+            if (socket != null) {
+                if (socket.isConnected()) {
+                    try {
+
+                        socket.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+
+
+        return null;
+
+    }
+}
