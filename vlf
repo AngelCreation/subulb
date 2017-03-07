@@ -1,0 +1,509 @@
+package in.co.surya.suryabulb.Fragment;
+
+import android.app.Dialog;
+import android.app.ProgressDialog;
+import android.content.Intent;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.net.Uri;
+import android.os.Bundle;
+import android.os.Environment;
+import android.support.design.widget.Snackbar;
+import android.support.v4.app.Fragment;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.ListView;
+import android.widget.ScrollView;
+import android.widget.TextView;
+
+import java.io.File;
+import java.io.Serializable;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import in.co.surya.suryabulb.Activity.ShowGraph;
+import in.co.surya.suryabulb.Helper.CSVReader;
+import in.co.surya.suryabulb.Helper.CreateAlarmLogCsv;
+import in.co.surya.suryabulb.Helper.CreatePeriodicLogCsv;
+import in.co.surya.suryabulb.Helper.DataHandler;
+import in.co.surya.suryabulb.Helper.ExpandableLayout;
+import in.co.surya.suryabulb.Helper.FlagsData;
+import in.co.surya.suryabulb.Helper.GraphData;
+import in.co.surya.suryabulb.R;
+
+
+public class ViewLog extends Fragment implements View.OnClickListener {
+
+    private TextView textViewTotalRecordPeriodic, textViewPageNoPeriodic, textViewRecordAddressPeriodic, textViewTotalRecordAlarm, textViewPageNoAlarm, textViewRecordAddressAlarm;
+    private Button buttonGetMemoryMasterInfo, buttonResetAlarmMemory, buttonResetPeriodicMemory, buttonDefaultCalibration, buttonSetCalibration,
+            buttonSetNewConfigSettings, buttonResetMemoryMasterInfo, buttonDefaultConfigSettings, buttonResetRunHourCycle, buttonTrendz, buttonRetrievePeriodicLogData, buttonRetrieveAlarmLogData,buttonEmailLog;
+    private DataHandler dataHandler;
+    private ExpandableLayout expandableLayout;
+    private ScrollView scroll;
+    private Thread thread;
+    private ProgressDialog progress;
+    private EditText edittextSetCalibration;
+
+    ListView listView;
+    ArrayAdapter arrayAdapter;
+    String[] list;
+    List<GraphData> dataList = new ArrayList<GraphData>();
+
+    public ViewLog() {
+        // Required empty public constructor
+    }
+
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
+        // Inflate the layout for this fragment
+        final View view = inflater.inflate(R.layout.fragment_view_log, container, false);
+        textViewTotalRecordPeriodic = (TextView) view.findViewById(R.id.textViewTotalRecordPeriodic);
+        textViewPageNoPeriodic = (TextView) view.findViewById(R.id.textViewPageNoPeriodic);
+        textViewRecordAddressPeriodic = (TextView) view.findViewById(R.id.textViewRecordAddressPeriodic);
+        textViewTotalRecordAlarm = (TextView) view.findViewById(R.id.textViewTotalRecordAlarm);
+        textViewPageNoAlarm = (TextView) view.findViewById(R.id.textViewPageNoAlarm);
+        textViewRecordAddressAlarm = (TextView) view.findViewById(R.id.textViewRecordAddressAlarm);
+
+        buttonGetMemoryMasterInfo = (Button) view.findViewById(R.id.buttonGetMemoryMasterInfo);
+        buttonResetRunHourCycle = (Button) view.findViewById(R.id.buttonResetRunHourCycle);
+        buttonDefaultConfigSettings = (Button) view.findViewById(R.id.buttonDefaultConfigSettings);
+        buttonResetMemoryMasterInfo = (Button) view.findViewById(R.id.buttonResetMemoryMasterInfo);
+        buttonSetNewConfigSettings = (Button) view.findViewById(R.id.buttonSetNewConfigSettings);
+        buttonSetCalibration = (Button) view.findViewById(R.id.buttonSetCalibration);
+        buttonDefaultCalibration = (Button) view.findViewById(R.id.buttonDefaultCalibration);
+        buttonResetPeriodicMemory = (Button) view.findViewById(R.id.buttonResetPeriodicMemory);
+        buttonResetAlarmMemory = (Button) view.findViewById(R.id.buttonResetAlarmMemory);
+        buttonEmailLog = (Button) view.findViewById(R.id.buttonEmailLog);
+
+        buttonRetrievePeriodicLogData = (Button) view.findViewById(R.id.buttonRetrievePeriodicLogData);
+        buttonRetrieveAlarmLogData = (Button) view.findViewById(R.id.buttonRetrieveAlarmLogData);
+
+        buttonTrendz = (Button) view.findViewById(R.id.buttonTrendz);
+
+        expandableLayout = (ExpandableLayout) view.findViewById(R.id.expandablelayout);
+
+        scroll = (ScrollView) view.findViewById(R.id.scroll);
+
+        edittextSetCalibration = (EditText) view.findViewById(R.id.edittextSetCalibration);
+
+        view.findViewById(R.id.expandMe).setOnClickListener(
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        scroll.scrollTo(0, expandableLayout.getTop());
+                        if (expandableLayout.isExpanded()) {
+                            expandableLayout.setExpanded(false);
+                        } else {
+                            LayoutInflater factory = LayoutInflater.from(getActivity());
+                            final View confirmDialogView = factory.inflate(R.layout.alert_security, null);
+                            final Dialog confirmDialog = new Dialog(getActivity());
+                            confirmDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+                            confirmDialog.setContentView(confirmDialogView);
+                            ((TextView) confirmDialogView.findViewById(R.id.wifiname)).setText("Enter Password");
+                            confirmDialogView.findViewById(R.id.security).setVisibility(View.GONE);
+                            confirmDialogView.findViewById(R.id.tvSec).setVisibility(View.GONE);
+                            ((Button) confirmDialogView.findViewById(R.id.connect)).setText("OK");
+
+                            confirmDialogView.findViewById(R.id.cancel).setOnClickListener(new View.OnClickListener() {
+                                @Override
+                                public void onClick(View v) {
+                                    confirmDialog.dismiss();
+                                }
+                            });
+
+                            confirmDialogView.findViewById(R.id.connect).setOnClickListener(new View.OnClickListener() {
+                                @Override
+                                public void onClick(View v) {
+
+                                    String s = ((EditText) confirmDialogView.findViewById(R.id.pass)).getText().toString();
+                                    if (s.matches("")) {
+                                        Snackbar snackbar = Snackbar.make(v, "Please Enter Password", Snackbar.LENGTH_SHORT);
+                                        Snackbar.SnackbarLayout layout = (Snackbar.SnackbarLayout) snackbar.getView();
+                                        layout.setBackgroundColor(Color.parseColor("#df013A"));
+                                        TextView textView = (TextView) layout.findViewById(android.support.design.R.id.snackbar_text);
+                                        textView.setTypeface(Typeface.DEFAULT_BOLD);
+                                        snackbar.show();
+                                    } else {
+                                        if (s.matches("admin")) {
+                                            confirmDialog.dismiss();
+                                            expandableLayout.setExpanded(true);
+                                            buttonGetMemoryMasterInfo.requestFocus();
+                                        } else {
+                                            Snackbar snackbar = Snackbar.make(v, "Please Check Your Password", Snackbar.LENGTH_SHORT);
+                                            Snackbar.SnackbarLayout layout = (Snackbar.SnackbarLayout) snackbar.getView();
+                                            layout.setBackgroundColor(Color.parseColor("#df013A"));
+                                            TextView textView = (TextView) layout.findViewById(android.support.design.R.id.snackbar_text);
+                                            textView.setTypeface(Typeface.DEFAULT_BOLD);
+                                            snackbar.show();
+                                        }
+                                    }
+                                }
+                            });
+                            confirmDialog.show();
+                            expandableLayout.getParent().requestChildFocus(expandableLayout, expandableLayout);
+                        }
+                    }
+                });
+
+        textViewTotalRecordPeriodic.requestFocus();
+
+        dataHandler = new DataHandler();
+        buttonGetMemoryMasterInfo.setOnClickListener(this);
+
+        buttonGetMemoryMasterInfo.setOnClickListener(this);
+        buttonResetRunHourCycle.setOnClickListener(this);
+        buttonDefaultConfigSettings.setOnClickListener(this);
+        buttonResetMemoryMasterInfo.setOnClickListener(this);
+        buttonSetNewConfigSettings.setOnClickListener(this);
+        buttonSetCalibration.setOnClickListener(this);
+        buttonDefaultCalibration.setOnClickListener(this);
+        buttonResetPeriodicMemory.setOnClickListener(this);
+        buttonResetAlarmMemory.setOnClickListener(this);
+        buttonEmailLog.setOnClickListener(this);
+
+        buttonRetrievePeriodicLogData.setOnClickListener(this);
+        buttonRetrieveAlarmLogData.setOnClickListener(this);
+
+
+        buttonTrendz.setOnClickListener(this);
+
+        return view;
+    }
+
+
+    @Override
+    public void onClick(View view) {
+        switch (view.getId()) {
+            case R.id.buttonGetMemoryMasterInfo:
+                thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        FlagsData.gettingData = true;
+                        String[] response;
+                        if ((response = dataHandler.getMemMasterInfo()) != null) {
+                            final String[] res = response;
+                            getActivity().runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    textViewTotalRecordPeriodic.setText(res[0].trim());
+                                    textViewPageNoPeriodic.setText(res[1].trim());
+                                    textViewRecordAddressPeriodic.setText(res[2].trim());
+                                    textViewTotalRecordAlarm.setText(res[3].trim());
+                                    textViewPageNoAlarm.setText(res[4].trim());
+                                    textViewRecordAddressAlarm.setText(res[5].trim());
+                                }
+                            });
+                        }
+                        FlagsData.gettingData = false;
+                    }
+                });
+                thread.start();
+                break;
+
+            case R.id.buttonResetRunHourCycle:
+                thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        FlagsData.gettingData = true;
+                        if (dataHandler.setRunhourONOFFCycleReset()) {
+                            setSnackBar("Run Hour Cycle Reset Successfully");
+                        } else {
+                            setSnackBar("Error In Resetting Run Hour Cycle Reset");
+                        }
+                        FlagsData.gettingData = false;
+                    }
+                });
+                thread.start();
+                break;
+
+            case R.id.buttonDefaultConfigSettings:
+                thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        FlagsData.gettingData = true;
+                        if (dataHandler.setApplyDefaultConfigurationSetting()) {
+                            setSnackBar("Default Config Settings Reset Successfully");
+                        } else {
+                            setSnackBar("Error In Resetting Default Config Settings");
+                        }
+                        FlagsData.gettingData = false;
+                    }
+                });
+                thread.start();
+                break;
+
+            case R.id.buttonResetMemoryMasterInfo:
+                thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        FlagsData.gettingData = true;
+                        if (dataHandler.setMemMasterInfoReset()) {
+                            setSnackBar("Memory Master Info Reset Successfully");
+                        } else {
+                            setSnackBar("Error In Resetting Memory Maser Info");
+                        }
+                        FlagsData.gettingData = false;
+                    }
+                });
+                thread.start();
+                break;
+
+            case R.id.buttonSetNewConfigSettings:
+                thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        FlagsData.gettingData = true;
+                        if (dataHandler.setApplyNewConfigurationSetting()) {
+                            setSnackBar("New Configuration Settings Applied Successfully");
+                        } else {
+                            setSnackBar("Error In Applying New Configuration Settings");
+                        }
+                        FlagsData.gettingData = false;
+                    }
+                });
+                thread.start();
+                break;
+
+            case R.id.buttonSetCalibration:
+                thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (edittextSetCalibration.getText().toString().matches("")) {
+                            setSnackBar("Please Enter Calibration Value");
+                        } else {
+                            int calibration = Integer.parseInt(edittextSetCalibration.getText().toString());
+
+                            if (calibration >= 220 && calibration <= 240) {
+                                boolean b = dataHandler.setCalibration(Integer.parseInt(edittextSetCalibration.getText().toString()));
+                                if (b) {
+                                    setSnackBar("Calibration Value Is Set Successfully");
+                                    getActivity().runOnUiThread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            edittextSetCalibration.setText("");
+                                        }
+                                    });
+                                } else {
+                                    setSnackBar("Error In Setting Calibration Value");
+                                }
+                            } else {
+                                setSnackBar("Please Enter Value Between 220 To 240");
+                            }
+                        }
+                    }
+                });
+                thread.start();
+                break;
+
+            case R.id.buttonDefaultCalibration:
+                thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (dataHandler.setDefaultCalibration()) {
+                            setSnackBar("Default Calibration Is Set Successfully");
+
+                        } else {
+                            setSnackBar("Error In Setting Default Calibration");
+                        }
+                    }
+                });
+                thread.start();
+                break;
+
+            case R.id.buttonResetPeriodicMemory:
+                thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        getActivity().runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                progress = new ProgressDialog(getActivity());
+                                progress.setIndeterminate(true);
+                                progress.setMessage("Erasing Periodic Memory...");
+                                progress.setCancelable(false);
+                                progress.show();
+                            }
+                        });
+                        FlagsData.gettingData = true;
+                        if (dataHandler.setPeriodicMemReset()) {
+                            if (dataHandler.readMemoryTaskListener()) {
+                                progress.dismiss();
+                                setSnackBar("Periodic Memory Is Reset Successfully");
+                            }
+                            setSnackBar("Error In Resetting Periodic Memory");
+                        } else {
+                            progress.dismiss();
+                            setSnackBar("Error In Resetting Periodic Memory");
+                        }
+                        FlagsData.gettingData = false;
+                    }
+                });
+                thread.start();
+                break;
+
+            case R.id.buttonResetAlarmMemory:
+                thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        getActivity().runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                progress = new ProgressDialog(getActivity());
+                                progress.setIndeterminate(true);
+                                progress.setMessage("Erasing Alarm Memory...");
+                                progress.setCancelable(false);
+                                progress.show();
+                            }
+                        });
+                        FlagsData.gettingData = true;
+                        if (dataHandler.setAlarmMemReset()) {
+                            if (dataHandler.readMemoryTaskListener()) {
+                                progress.dismiss();
+                                setSnackBar("Alarm Memory Is Reset Successfully");
+                            }
+//                            progress.dismiss();
+                            setSnackBar("Error In Resetting Alarm Memory");
+
+                        } else {
+                            progress.dismiss();
+                            setSnackBar("Error In Resetting Alarm Memory");
+                        }
+                        FlagsData.gettingData = false;
+                    }
+                });
+                thread.start();
+                break;
+
+            case R.id.buttonRetrievePeriodicLogData:
+                FlagsData.gettingData = true;
+                new CreatePeriodicLogCsv(getActivity(),getView()).execute();
+                break;
+            case R.id.buttonRetrieveAlarmLogData:
+                FlagsData.gettingData = true;
+                new CreateAlarmLogCsv(getActivity(),getView()).execute();
+                break;
+
+            case R.id.buttonEmailLog:
+
+                File f = new File(Environment.getExternalStorageDirectory() + "/CFL-DMU/");
+                if (!f.exists()) {
+                    f.mkdir();
+                }
+                list = f.list();
+                if (list.length == 0) {
+                    setSnackBar("No Log Files Found");
+                    break;
+                }
+
+
+                final Dialog dia = new Dialog(getActivity());
+                dia.requestWindowFeature(Window.FEATURE_NO_TITLE);
+                dia.setContentView(R.layout.alert_csvlist);
+                dia.setCancelable(true);
+
+                listView = (ListView) dia.findViewById(R.id.listViewShowGraph);
+                arrayAdapter = new ArrayAdapter<String>(getActivity(),
+                        R.layout.custom_list_item, R.id.itemText, list);
+                listView.setAdapter(arrayAdapter);
+
+                listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                    @Override
+                    public void onItemClick(AdapterView<?> adapterView, View view, int position, long l) {
+                        File f = new File(Environment.getExternalStorageDirectory() + "/CFL-DMU/" + list[position]);
+                        Intent intentShareFile = new Intent(Intent.ACTION_SEND);
+
+                        if (f.exists() && f.canRead()) {
+
+                                intentShareFile.setType("application/csv");
+//                            intentShareFile.setType("text/html");
+                                intentShareFile.putExtra(Intent.EXTRA_STREAM, Uri.parse("file://"+ f.getAbsolutePath()));
+
+                                intentShareFile.putExtra(Intent.EXTRA_SUBJECT,
+                                        "Alarm Log Data -"+new SimpleDateFormat("dd/MM/yyyy").format(new Date()));
+                                intentShareFile.putExtra(Intent.EXTRA_TEXT, "Hello,\n I Am Sharing Alarm Log Data With You");
+
+                                getActivity().startActivity(Intent.createChooser(intentShareFile, "Share Alarm Log"));
+                        }
+                    }
+                });
+
+                Button btn = (Button) dia.findViewById(R.id.cancel);
+                btn.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        dia.dismiss();
+                    }
+                });
+                dia.show();
+                break;
+
+            case R.id.buttonTrendz:
+                File file = new File(Environment.getExternalStorageDirectory() + "/CFL-DMU/");
+                if (!file.exists()) {
+                    file.mkdir();
+                }
+                list = file.list();
+                if (list.length == 0) {
+                    setSnackBar("No Log Files Found");
+                    break;
+                }
+                final Dialog dialog = new Dialog(getActivity());
+                dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+                dialog.setContentView(R.layout.alert_csvlist);
+                dialog.setCancelable(true);
+
+                listView = (ListView) dialog.findViewById(R.id.listViewShowGraph);
+                arrayAdapter = new ArrayAdapter<String>(getActivity(),
+                        R.layout.custom_list_item, R.id.itemText, list);
+                listView.setAdapter(arrayAdapter);
+
+                listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                    @Override
+                    public void onItemClick(AdapterView<?> adapterView, View view, int position, long l) {
+
+                        Intent intent = new Intent(getActivity(), ShowGraph.class);
+                        intent.putExtra("fileName",list[position]);
+                        startActivity(intent);
+                        
+                            /*GraphFragment graphFragment = new GraphFragment();
+
+                            FragmentManager fragmentManager = getFragmentManager();
+                            Bundle bundle = new Bundle();
+                            bundle.putSerializable("dataList", (Serializable) dataList);
+                            graphFragment.setArguments(bundle);
+                            fragmentManager.beginTransaction().replace(R.id.frame,graphFragment,"GraphFragment").addToBackStack(null).commit();*/
+                    }
+                });
+
+                Button button = (Button) dialog.findViewById(R.id.cancel);
+                button.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        dialog.dismiss();
+                    }
+                });
+                dialog.show();
+                break;
+
+        }
+    }
+
+    private void setSnackBar(String message) {
+        Snackbar snackbar = Snackbar.make(getView(), message, Snackbar.LENGTH_SHORT);
+        Snackbar.SnackbarLayout layout = (Snackbar.SnackbarLayout) snackbar.getView();
+        layout.setBackgroundColor(Color.parseColor("#df013A"));
+        TextView textView = (TextView) layout.findViewById(android.support.design.R.id.snackbar_text);
+        textView.setTypeface(Typeface.DEFAULT_BOLD);
+        snackbar.show();
+    }
+}
